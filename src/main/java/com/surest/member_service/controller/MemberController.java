@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -24,6 +25,7 @@ public class MemberController {
     private final MemberService memberService;
 
     @GetMapping("/members")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public Page<MemberResponse> getMembers(
             @RequestParam(required = false) String firstName,
             @RequestParam(required = false) String lastName,
@@ -40,18 +42,21 @@ public class MemberController {
     }
 
     @GetMapping("/members/{id}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<MemberResponse> getMemberById(@PathVariable("id") UUID id) throws MemberException {
         MemberResponse memberResponse = memberService.getMemberById(id);
         return ResponseEntity.ok(memberResponse);
     }
 
     @PostMapping("/members")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MemberResponse> addNewMember(@Valid @RequestBody MemberRequest request) throws MemberException {
         MemberResponse memberResponse = memberService.createMember(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(memberResponse);
     }
 
     @PutMapping("/members/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MemberResponse> updateMember(
             @PathVariable("id") UUID id,
             @RequestBody MemberResponse memberResponse) throws MemberException {
@@ -60,6 +65,7 @@ public class MemberController {
     }
 
     @DeleteMapping("/members/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteMember(@PathVariable("id") UUID memberId) throws MemberException {
         memberService.deleteMember(memberId);
         return ResponseEntity.noContent().build();
