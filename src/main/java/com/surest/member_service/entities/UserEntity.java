@@ -19,7 +19,7 @@ import java.util.UUID;
 @Data
 @Builder
 @Entity
-@Table(name = "user", schema = "member_mgmt", uniqueConstraints = {
+@Table(name = "users", schema = "member_mgmt", uniqueConstraints = {
         @UniqueConstraint(columnNames = "username")
 })
 public class UserEntity implements UserDetails {

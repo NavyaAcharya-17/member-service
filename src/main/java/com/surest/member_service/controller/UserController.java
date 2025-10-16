@@ -3,6 +3,7 @@ package com.surest.member_service.controller;
 import com.surest.member_service.dto.UserRequest;
 import com.surest.member_service.dto.UserResponse;
 import com.surest.member_service.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,8 +18,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/register")
-    public UserResponse registerUser(@RequestBody UserRequest registerRequest) throws Exception {
+    public UserResponse registerUser(@Valid @RequestBody UserRequest registerRequest) throws Exception {
         return userService.registerUser(registerRequest);
     }
-
 }

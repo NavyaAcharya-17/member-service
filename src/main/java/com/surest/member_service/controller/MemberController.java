@@ -26,19 +26,16 @@ public class MemberController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-    public Page<MemberResponse> getMembers(
+    public ResponseEntity<Page<MemberResponse>> getAllMembers(
             @RequestParam(required = false) String firstName,
             @RequestParam(required = false) String lastName,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "lastName,asc") String sort
-    ) {
+            @RequestParam(defaultValue = "lastName,asc") String sort) {
         String[] sortParams = sort.split(",");
-        String sortField = sortParams[0];
-        Sort.Direction sortDirection = sortParams.length > 1 ? Sort.Direction.fromString(sortParams[1]) : Sort.Direction.ASC;
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortField));
-        return memberService.getMembers(firstName, lastName, pageable);
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by(Sort.Direction.fromString(sortParams[1]), sortParams[0]));
+        return ResponseEntity.ok(memberService.getMembers(firstName, lastName, pageable));
     }
 
     @GetMapping("/{id}")

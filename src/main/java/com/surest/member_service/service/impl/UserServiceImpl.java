@@ -4,6 +4,7 @@ import com.surest.member_service.dto.UserRequest;
 import com.surest.member_service.dto.UserResponse;
 import com.surest.member_service.entities.RoleEntity;
 import com.surest.member_service.entities.UserEntity;
+import com.surest.member_service.exception.UserException;
 import com.surest.member_service.repository.RoleRepository;
 import com.surest.member_service.repository.UserRepository;
 import com.surest.member_service.service.UserService;
@@ -20,9 +21,9 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public UserResponse registerUser(UserRequest request) throws Exception {
+    public UserResponse registerUser(UserRequest request) throws UserException {
         if (userRepository.findByUserName(request.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("Username already exists");
+            throw new UserException("Username already exists");
         }
         RoleEntity role = roleRepository.findByName(request.getRole())
                 .orElseGet(() -> roleRepository.save(RoleEntity.builder().name(request.getRole() != null ? request.getRole() : "ROLE_USER").build()));

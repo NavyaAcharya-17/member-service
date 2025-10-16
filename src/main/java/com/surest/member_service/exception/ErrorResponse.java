@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
@@ -15,5 +17,6 @@ public class ErrorResponse {
     private String message;
     private String path;
     private String timestamp;
+    private Map<String, String> details;
 }
 
