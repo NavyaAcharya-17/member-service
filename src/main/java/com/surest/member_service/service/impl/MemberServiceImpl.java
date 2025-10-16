@@ -9,11 +9,15 @@ import com.surest.member_service.repository.MemberRepository;
 import com.surest.member_service.service.MemberService;
 import com.surest.member_service.specification.MemberSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -30,22 +34,23 @@ public class MemberServiceImpl implements MemberService {
     private final MemberMapper memberMapper;
 
     @Override
+    @Transactional(readOnly = true)
     public Page<MemberResponse> getMembers(String firstName, String lastName, Pageable pageable) {
         Specification<MemberEntity> spec = MemberSpecification.trueSpec();
 
         if (firstName != null && !firstName.isBlank()) {
             spec = spec.and(MemberSpecification.firstNameContains(firstName));
         }
-
         if (lastName != null && !lastName.isBlank()) {
             spec = spec.and(MemberSpecification.lastNameContains(lastName));
         }
-
         return memberRepository.findAll(spec, pageable)
                 .map(memberMapper::mapToResponse);
     }
 
     @Override
+    @Transactional(readOnly = true)
+    @Cacheable(value = "members", key = "#memberId")
     public MemberResponse getMemberById(UUID memberId) throws MemberException {
         MemberEntity memberEntity = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberException(HttpStatus.NOT_FOUND, MEMBER_NOT_FOUND + memberId));
@@ -53,8 +58,8 @@ public class MemberServiceImpl implements MemberService {
     }
 
     @Override
+    @Transactional
     public MemberResponse createMember(MemberRequest memberRequest) throws MemberException {
-        // Check if email already exists
         Optional<MemberEntity> existingMember = memberRepository.findByEmail(memberRequest.getEmail());
         if (existingMember.isPresent()) {
             throw new MemberException(HttpStatus.INTERNAL_SERVER_ERROR, EMAIL_ALREADY_EXISTS + memberRequest.getEmail());
@@ -65,6 +70,8 @@ public class MemberServiceImpl implements MemberService {
     }
 
     @Override
+    @Transactional
+    @CachePut(value = "members", key = "#memberId")
     public MemberResponse updateMember(UUID memberId, MemberResponse memberResponse) throws MemberException {
         MemberEntity existingMember = memberRepository.findById(memberId)
                 .orElseThrow(() -> new MemberException(HttpStatus.NOT_FOUND, MEMBER_NOT_FOUND + memberId));
@@ -74,6 +81,8 @@ public class MemberServiceImpl implements MemberService {
     }
 
     @Override
+    @Transactional
+    @CacheEvict(value = "members", key = "#memberId")
     public void deleteMember(UUID memberId) throws MemberException {
         if (!memberRepository.existsById(memberId)) {
             throw new MemberException(HttpStatus.NOT_FOUND, MEMBER_NOT_FOUND);
