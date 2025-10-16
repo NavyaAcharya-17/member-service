@@ -6,13 +6,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Data
 @Builder
-public class AuthRequest {
+public class UserRequest {
     @NotBlank(message = "User name is required")
     private String username;
     @NotBlank(message = "Password is required")
     private String password;
+    @NotBlank(message = "Role is required")
+    private String role;
 }

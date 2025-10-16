@@ -18,13 +18,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/")
+@RequestMapping("/api/v1/members")
 @RequiredArgsConstructor
 public class MemberController {
 
     private final MemberService memberService;
 
-    @GetMapping("/members")
+    @GetMapping
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public Page<MemberResponse> getMembers(
             @RequestParam(required = false) String firstName,
@@ -41,21 +41,21 @@ public class MemberController {
         return memberService.getMembers(firstName, lastName, pageable);
     }
 
-    @GetMapping("/members/{id}")
+    @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<MemberResponse> getMemberById(@PathVariable("id") UUID id) throws MemberException {
         MemberResponse memberResponse = memberService.getMemberById(id);
         return ResponseEntity.ok(memberResponse);
     }
 
-    @PostMapping("/members")
+    @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MemberResponse> addNewMember(@Valid @RequestBody MemberRequest request) throws MemberException {
         MemberResponse memberResponse = memberService.createMember(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(memberResponse);
     }
 
-    @PutMapping("/members/{id}")
+    @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MemberResponse> updateMember(
             @PathVariable("id") UUID id,
@@ -64,7 +64,7 @@ public class MemberController {
         return ResponseEntity.ok(updatedMember);
     }
 
-    @DeleteMapping("/members/{id}")
+    @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteMember(@PathVariable("id") UUID memberId) throws MemberException {
         memberService.deleteMember(memberId);
