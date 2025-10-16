@@ -1,5 +1,6 @@
 package com.surest.member_service.entities;
 
+import com.surest.member_service.dto.MemberResponse;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -37,5 +38,17 @@ public class MemberEntity {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Timestamp updatedAt;
+
+    public MemberResponse toResponse() {
+        return MemberResponse.builder()
+                .memberId(this.memberId)
+                .firstName(this.firstName)
+                .lastName(this.lastName)
+                .dateOfBirth(this.dateOfBirth)
+                .email(this.email)
+                .createdAt(this.createdAt)
+                .updatedAt(this.updatedAt)
+                .build();
+    }
 }
 

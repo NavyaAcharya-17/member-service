@@ -24,7 +24,7 @@ public class SwaggerConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Member Management API")
+                        .title("Surest Member Management API")
                         .version("1.0")
                         .description("API documentation for Members and Auth endpoints"))
                 .components(new Components()

@@ -1,133 +1,187 @@
 package com.surest.member_service.controller;
 
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.surest.member_service.dto.MemberRequest;
 import com.surest.member_service.dto.MemberResponse;
 import com.surest.member_service.exception.MemberException;
 import com.surest.member_service.service.MemberService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.data.domain.*;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.util.Collections;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
-import static com.surest.member_service.util.MemberUtil.EMAIL_ALREADY_EXISTS;
-import static com.surest.member_service.util.MemberUtil.MEMBER_NOT_FOUND;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.test.web.servlet.ResultActions;
 
+@SpringBootTest
+@AutoConfigureMockMvc
+class MemberControllerTest {
 
-public class MemberControllerTest {
-    @Mock
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
     private MemberService memberService;
 
-    @InjectMocks
-    private MemberController memberController;
+    @Autowired
+    private ObjectMapper objectMapper;
 
-    private MemberResponse memberResponse;
-    private MemberRequest memberRequest;
+    private MemberRequest validRequest;
+    private MemberResponse validResponse;
     private UUID memberId;
-    Pageable pageable;
-    private Page<MemberResponse> memberResponsePage;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-
         memberId = UUID.randomUUID();
-        memberResponse = MemberResponse.builder()
+
+        validRequest = MemberRequest.builder()
+                .firstName("John")
+                .lastName("Doe")
+                .email("john@example.com")
+                .dateOfBirth(LocalDate.of(1990, 1, 1))
+                .build();
+
+        validResponse = MemberResponse.builder()
                 .memberId(memberId)
                 .firstName("John")
                 .lastName("Doe")
+                .email("john@example.com")
                 .dateOfBirth(LocalDate.of(1990, 1, 1))
-                .email("john.doe@example.com")
+                .createdAt(Timestamp.valueOf(LocalDateTime.now()))
+                .updatedAt(Timestamp.valueOf(LocalDateTime.now()))
                 .build();
+    }
+    // --------------------GET ALL MEMBERS --------------------
+    @ParameterizedTest
+    @ValueSource(strings = {"USER", "ADMIN"})
+    @WithMockUser
+    void getAllMembersReturnsPageForRole(String role) throws Exception {
+        Page<MemberResponse> page = new PageImpl<>(List.of(validResponse));
+        when(memberService.getMembers(any(), any(), any()))
+                .thenReturn(page);
+        ResultActions perform = mockMvc.perform(get("/api/v1/members")
+                .param("page", "0")
+                .param("size", "5")
+                .param("sort", "lastName,asc"));
+        perform.andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1));
+    }
 
-        memberRequest = MemberRequest.builder()
-                .firstName("John")
-                .lastName("Doe")
-                .dateOfBirth(LocalDate.of(1990, 1, 1))
-                .email("john.doe@example.com")
+    @Test
+    void getAllMembersReturns403WhenNoAuth() throws Exception {
+        mockMvc.perform(get("/api/v1/members"))
+                .andExpect(status().isForbidden());
+    }
+
+    // --------------------GET MEMBER BY ID --------------------
+    @ParameterizedTest
+    @ValueSource(strings = {"USER", "ADMIN"})
+    void getMemberByIdReturnsMemberForRoleWhenExists(String role) throws Exception {
+        when(memberService.getMemberById(memberId)).thenReturn(validResponse);
+
+        mockMvc.perform(get("/api/v1/members/{id}", memberId)
+                        .with(user("test").roles(role)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("john@example.com"));
+    }
+
+    @Test
+    @WithMockUser(roles = {"USER"})
+    void getMemberByIdReturns404WhenNotFound() throws Exception {
+        when(memberService.getMemberById(any(UUID.class)))
+                .thenThrow(new MemberException(HttpStatus.NOT_FOUND,"Member not found"));
+        mockMvc.perform(get("/api/v1/members/{id}", memberId))
+                .andExpect(status().isNotFound());
+    }
+
+    // --------------------CREATE MEMBER --------------------
+    @Test
+    @WithMockUser(roles = {"ADMIN"})
+    void addNewMemberReturns201WhenValidRequest() throws Exception {
+        when(memberService.createMember(any(MemberRequest.class))).thenReturn(validResponse);
+        mockMvc.perform(post("/api/v1/members")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.firstName").value("John"));
+    }
+
+    @Test
+    @WithMockUser(roles = {"ADMIN"})
+    void addNewMemberReturns400WhenInValidRequest() throws Exception {
+        MemberRequest invalidRequest = MemberRequest.builder().firstName("").lastName("")
+                .email("invalid-email").dateOfBirth(LocalDate.now().plusDays(1))
                 .build();
+        mockMvc.perform(post("/api/v1/members")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+    }
 
-        pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "lastName"));
-        memberResponsePage = new PageImpl<>(Collections.singletonList(memberResponse));
+    // --------------------UPDATE MEMBER --------------------
+    @Test
+    @WithMockUser(roles = {"ADMIN"})
+    void updateMemberReturns200ForValidRequest() throws Exception {
+        when(memberService.updateMember(eq(memberId), any(MemberResponse.class))).thenReturn(validResponse);
+        mockMvc.perform(put("/api/v1/members/{id}", memberId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validResponse)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lastName").value("Doe"));
     }
 
     @Test
-    void testGetMembers_Success() {
-        when(memberService.getMembers(any(), any(), any(Pageable.class)))
-                .thenReturn(memberResponsePage);
-        Page<MemberResponse> result = memberController.getMembers("John", "Doe", 0, 10, "lastName,asc");
-        assertNotNull(result);
-        assertEquals(1, result.getTotalElements());
-        assertEquals("John", result.getContent().get(0).getFirstName());
+    @WithMockUser(roles = {"ADMIN"})
+    void updateMemberReturns404WhenMemberNotFound() throws Exception {
+        when(memberService.updateMember(any(UUID.class), any(MemberResponse.class)))
+                .thenThrow(new MemberException(HttpStatus.NOT_FOUND,"Member not found"));
+        mockMvc.perform(put("/api/v1/members/{id}", memberId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validResponse)))
+                .andExpect(status().isNotFound());
     }
 
-
+    // --------------------DELETE MEMBER--------------------
     @Test
-    void testGetMemberById_Success() throws MemberException {
-        when(memberService.getMemberById(memberId)).thenReturn(memberResponse);
-
-        ResponseEntity<MemberResponse> response = memberController.getMemberById(memberId);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(memberResponse, response.getBody());
-    }
-
-    @Test
-    void testGetMemberById_NotFound() throws MemberException {
-        when(memberService.getMemberById(memberId)).thenThrow(new MemberException(HttpStatus.NOT_FOUND, MEMBER_NOT_FOUND));
-        assertThrows(MemberException.class, () -> memberController.getMemberById(memberId));
-    }
-
-    @Test
-    void testAddNewMember_Success() throws MemberException {
-        when(memberService.createMember(any())).thenReturn(memberResponse);
-        ResponseEntity<MemberResponse> response = memberController.addNewMember(memberRequest);
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(memberResponse, response.getBody());
-    }
-
-    @Test
-    void testAddNewMember_EmailExists() throws MemberException {
-        when(memberService.createMember(any())).thenThrow(new MemberException(HttpStatus.INTERNAL_SERVER_ERROR, EMAIL_ALREADY_EXISTS));
-        assertThrows(MemberException.class, () -> memberController.addNewMember(memberRequest));
-    }
-
-    @Test
-    void testUpdateMember_Success() throws MemberException {
-        when(memberService.updateMember(eq(memberId), any())).thenReturn(memberResponse);
-        ResponseEntity<MemberResponse> response = memberController.updateMember(memberId, memberResponse);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(memberResponse, response.getBody());
-    }
-
-    @Test
-    void testUpdateMember_NotFound() throws MemberException {
-        when(memberService.updateMember(eq(memberId), any())).thenThrow(new MemberException(HttpStatus.NOT_FOUND, MEMBER_NOT_FOUND));
-        assertThrows(MemberException.class, () -> memberController.updateMember(memberId, memberResponse));
-    }
-
-    @Test
-    void testDeleteMember_Success() throws MemberException {
+    @WithMockUser(roles = {"ADMIN"})
+    void deleteMemberReturns204WhenSuccess() throws Exception {
         doNothing().when(memberService).deleteMember(memberId);
-
-        ResponseEntity<Void> response = memberController.deleteMember(memberId);
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        assertNull(response.getBody());
+        mockMvc.perform(delete("/api/v1/members/{id}", memberId))
+                .andExpect(status().isNoContent());
+        verify(memberService, times(1)).deleteMember(memberId);
     }
 
     @Test
-    void testDeleteMember_NotFound() throws MemberException {
-        doThrow(new MemberException(HttpStatus.NOT_FOUND, MEMBER_NOT_FOUND)).when(memberService).deleteMember(memberId);
-        assertThrows(MemberException.class, () -> memberController.deleteMember(memberId));
+    @WithMockUser(roles = {"ADMIN"})
+    void deleteMemberReturns404WhenNotFound() throws Exception {
+        doThrow(new MemberException(HttpStatus.NOT_FOUND,"Member not found"))
+                .when(memberService).deleteMember(memberId);
+        mockMvc.perform(delete("/api/v1/members/{id}", memberId))
+                .andExpect(status().isNotFound());
     }
 
 }

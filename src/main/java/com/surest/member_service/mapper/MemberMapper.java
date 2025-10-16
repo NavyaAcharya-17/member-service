@@ -3,10 +3,7 @@ package com.surest.member_service.mapper;
 import com.surest.member_service.dto.MemberRequest;
 import com.surest.member_service.dto.MemberResponse;
 import com.surest.member_service.entities.MemberEntity;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.*;
 
 @Mapper(componentModel = "spring")
 public interface MemberMapper {
@@ -15,6 +12,9 @@ public interface MemberMapper {
 
     MemberResponse toResponse(MemberEntity entity);
 
+    @Mapping(target = "memberId", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     MemberEntity toEntity(MemberRequest request);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
