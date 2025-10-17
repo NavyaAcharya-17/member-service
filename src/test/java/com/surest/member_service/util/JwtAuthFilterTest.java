@@ -1,7 +1,6 @@
-package com.surest.member_service.filter;
+package com.surest.member_service.util;
 
 import com.surest.member_service.service.impl.CustomUserDetailsService;
-import com.surest.member_service.util.JWTUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

@@ -5,6 +5,9 @@ import com.surest.member_service.dto.MemberResponse;
 import com.surest.member_service.entities.MemberEntity;
 import org.mapstruct.*;
 
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+
 @Mapper(componentModel = "spring")
 public interface MemberMapper {
 
@@ -12,11 +15,16 @@ public interface MemberMapper {
 
     MemberResponse toResponse(MemberEntity entity);
 
-    @Mapping(target = "memberId", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "updatedAt", ignore = true)
     MemberEntity toEntity(MemberRequest request);
 
-    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @AfterMapping
+    default void setAuditFields(@MappingTarget MemberEntity entity) {
+        if (entity.getCreatedAt() == null) {
+            entity.setCreatedAt(Timestamp.valueOf(LocalDateTime.now()));
+        }
+        entity.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
+    }
+
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_NULL)
     void updateEntityFromResponse(MemberResponse dto, @MappingTarget MemberEntity entity);
 }
