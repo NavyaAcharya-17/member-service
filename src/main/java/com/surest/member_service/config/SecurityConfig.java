@@ -1,6 +1,6 @@
 package com.surest.member_service.config;
 
-import com.surest.member_service.filter.JwtAuthFilter;
+import com.surest.member_service.util.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
