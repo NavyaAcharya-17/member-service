@@ -24,16 +24,16 @@ public class GlobalExceptionHandler {
     private static final String TIMESTAMP = "timestamp";
     private static final String DETAILS = "details";
 
-    @ExceptionHandler(MemberException.class)
-    public ResponseEntity<Map<String, Object>> handleMemberException(MemberException ex, WebRequest request) {
+    @ExceptionHandler(MemberNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleMemberException(MemberNotFoundException ex, WebRequest request) {
         Map<String, Object> body = new HashMap<>();
-        body.put(STATUS, ex.getHttpStatus().name());
+        body.put(STATUS, HttpStatus.NOT_FOUND.name());
         body.put(ERROR, "Resource Not Found");
-        body.put(MESSAGE, ex.getMessage());
+        body.put(MESSAGE, "Member Not Found");
         body.put(PATH, request.getDescription(false).replace("uri=", ""));
         body.put(TIMESTAMP, LocalDateTime.now().format(formatter));
 
-        return new ResponseEntity<>(body, ex.getHttpStatus());
+        return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(Exception.class)
@@ -46,6 +46,18 @@ public class GlobalExceptionHandler {
         body.put(TIMESTAMP, LocalDateTime.now().format(formatter));
 
         return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(ResourceAlreadyExistsException.class)
+    public ResponseEntity<Map<String, Object>> handleResourceAlreadyExistsException(ResourceAlreadyExistsException ex, WebRequest request) {
+        Map<String, Object> body = new HashMap<>();
+        body.put(STATUS, HttpStatus.CONFLICT.name());
+        body.put(ERROR, "Conflict");
+        body.put(MESSAGE, "Resource already exists");
+        body.put(PATH, request.getDescription(false).replace("uri=", ""));
+        body.put(TIMESTAMP, LocalDateTime.now().format(formatter));
+
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -65,5 +77,4 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
-
 }

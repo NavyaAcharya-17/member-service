@@ -3,7 +3,7 @@ package com.surest.member_service.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.surest.member_service.dto.MemberRequest;
 import com.surest.member_service.dto.MemberResponse;
-import com.surest.member_service.exception.MemberException;
+import com.surest.member_service.exception.MemberNotFoundException;
 import com.surest.member_service.service.MemberService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -113,7 +113,7 @@ class MemberControllerTest {
     @WithMockUser(roles = {"USER"})
     void getMemberByIdReturns404WhenNotFound() throws Exception {
         when(memberService.getMemberById(any(UUID.class)))
-                .thenThrow(new MemberException(HttpStatus.NOT_FOUND,"Member not found"));
+                .thenThrow(new MemberNotFoundException(HttpStatus.NOT_FOUND,"Member not found"));
         mockMvc.perform(get("/api/v1/members/{id}", memberId))
                 .andExpect(status().isNotFound());
     }
@@ -158,7 +158,7 @@ class MemberControllerTest {
     @WithMockUser(roles = {"ADMIN"})
     void updateMemberReturns404WhenMemberNotFound() throws Exception {
         when(memberService.updateMember(any(UUID.class), any(MemberResponse.class)))
-                .thenThrow(new MemberException(HttpStatus.NOT_FOUND,"Member not found"));
+                .thenThrow(new MemberNotFoundException(HttpStatus.NOT_FOUND,"Member not found"));
         mockMvc.perform(put("/api/v1/members/{id}", memberId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validResponse)))
@@ -178,7 +178,7 @@ class MemberControllerTest {
     @Test
     @WithMockUser(roles = {"ADMIN"})
     void deleteMemberReturns404WhenNotFound() throws Exception {
-        doThrow(new MemberException(HttpStatus.NOT_FOUND,"Member not found"))
+        doThrow(new MemberNotFoundException(HttpStatus.NOT_FOUND,"Member not found"))
                 .when(memberService).deleteMember(memberId);
         mockMvc.perform(delete("/api/v1/members/{id}", memberId))
                 .andExpect(status().isNotFound());

@@ -2,9 +2,8 @@ package com.surest.member_service.controller;
 
 import com.surest.member_service.dto.AuthRequest;
 import com.surest.member_service.dto.AuthResponse;
-import com.surest.member_service.dto.UserRequest;
-import com.surest.member_service.dto.UserResponse;
 import com.surest.member_service.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,7 +19,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest authRequest) throws Exception {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest authRequest) {
         AuthResponse response = authService.generateToken(authRequest);
         return ResponseEntity.ok(response);
     }

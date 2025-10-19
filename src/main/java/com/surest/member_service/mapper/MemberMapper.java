@@ -3,28 +3,42 @@ package com.surest.member_service.mapper;
 import com.surest.member_service.dto.MemberRequest;
 import com.surest.member_service.dto.MemberResponse;
 import com.surest.member_service.entities.MemberEntity;
-import org.mapstruct.*;
+import org.springframework.stereotype.Component;
 
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
-@Mapper(componentModel = "spring")
-public interface MemberMapper {
-
-    MemberResponse mapToResponse(MemberEntity entity);
-
-    MemberResponse toResponse(MemberEntity entity);
-
-    MemberEntity toEntity(MemberRequest request);
-
-    @AfterMapping
-    default void setAuditFields(@MappingTarget MemberEntity entity) {
-        if (entity.getCreatedAt() == null) {
-            entity.setCreatedAt(Timestamp.valueOf(LocalDateTime.now()));
-        }
-        entity.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
+@Component
+public class MemberMapper {
+    public MemberResponse toResponse(MemberEntity member) {
+        return MemberResponse.builder()
+                .memberId(member.getMemberId())
+                .firstName(member.getFirstName())
+                .lastName(member.getLastName())
+                .dateOfBirth(member.getDateOfBirth())
+                .email(member.getEmail())
+                .createdAt(member.getCreatedAt())
+                .updatedAt(member.getUpdatedAt())
+                .build();
     }
 
-    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_NULL)
-    void updateEntityFromResponse(MemberResponse dto, @MappingTarget MemberEntity entity);
+    public MemberEntity toEntity(MemberRequest request) {
+        Timestamp now = Timestamp.from(Instant.now());
+        return MemberEntity.builder()
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .dateOfBirth(request.getDateOfBirth())
+                .email(request.getEmail())
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+    }
+
+    public void updateEntity(MemberEntity member, MemberRequest request) {
+        member.setFirstName(request.getFirstName());
+        member.setLastName(request.getLastName());
+        member.setDateOfBirth(request.getDateOfBirth());
+        member.setEmail(request.getEmail());
+        member.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
+    }
 }

@@ -26,9 +26,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
-        http.authorizeHttpRequests(auth->
+        http.authorizeHttpRequests(auth ->
                 auth.requestMatchers(
-                        "/api/v1/auth/login",
+                                "/api/v1/auth/login",
                                 "/api/v1/user/register",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
@@ -39,7 +39,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder(){
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 

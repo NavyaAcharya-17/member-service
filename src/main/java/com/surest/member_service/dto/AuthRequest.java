@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class AuthRequest {
     @NotBlank(message = "User name is required")
     private String username;
+
     @NotBlank(message = "Password is required")
     private String password;
 }

@@ -17,7 +17,7 @@ public class AuthServiceImpl implements AuthService {
     private final JWTUtil jwtUtil;
 
     @Override
-    public AuthResponse generateToken(AuthRequest authRequest) throws Exception {
+    public AuthResponse generateToken(AuthRequest authRequest) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         authRequest.getUsername(),
