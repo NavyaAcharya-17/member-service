@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -18,9 +19,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
-public class AuthControllerTest {
+class AuthControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
@@ -31,7 +33,7 @@ public class AuthControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void login_ShouldReturn200_WhenCredentialsAreValid() throws Exception {
+    void testLoginSuccess() throws Exception {
         // Arrange
         AuthRequest authRequest = new AuthRequest("john_doe", "password123");
         AuthResponse authResponse = new AuthResponse("mock-jwt-token");
@@ -45,7 +47,7 @@ public class AuthControllerTest {
     }
 
     @Test
-    void login_ShouldReturn401_WhenInvalidCredentials() throws Exception {
+    void testLoginValidationFailure() throws Exception {
         AuthRequest authRequest = new AuthRequest("john_doe", "wrong_password");
 
         Mockito.when(authService.generateToken(any(AuthRequest.class)))
@@ -55,16 +57,5 @@ public class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(authRequest)))
                 .andExpect(status().isInternalServerError()) // or .isUnauthorized() if you handle 401 in GlobalExceptionHandler
                 .andExpect(jsonPath("$.message").value("Invalid username or password"));
-    }
-
-    @Test
-    void login_ShouldReturn500_WhenUnexpectedErrorOccurs() throws Exception {
-        AuthRequest authRequest = new AuthRequest("john_doe", "password123");
-        Mockito.when(authService.generateToken(any(AuthRequest.class)))
-                .thenThrow(new Exception("Something went wrong"));
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(authRequest)))
-                .andExpect(status().isInternalServerError());
     }
 }

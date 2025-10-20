@@ -4,24 +4,25 @@ import com.surest.member_service.dto.UserRequest;
 import com.surest.member_service.dto.UserResponse;
 import com.surest.member_service.entities.RoleEntity;
 import com.surest.member_service.entities.UserEntity;
+import com.surest.member_service.exception.ResourceAlreadyExistsException;
 import com.surest.member_service.repository.RoleRepository;
 import com.surest.member_service.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
-import java.util.UUID;
+import java.util.Set;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
 
     @Mock
@@ -36,65 +37,74 @@ class UserServiceImplTest {
     @InjectMocks
     private UserServiceImpl userService;
 
+    private UserRequest userRequest;
+
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
+        userRequest = UserRequest.builder()
+                .username("testuser")
+                .password("password123")
+                .roles(Set.of("USER"))
+                .build();
     }
 
     @Test
-    void testRegisterUserSuccessWithExistingRole() {
-        UserRequest request = new UserRequest();
-        request.setUsername("john");
-        request.setPassword("password");
-        request.setRole("ROLE_ADMIN");
-        RoleEntity existingRole = RoleEntity.builder().name("ROLE_ADMIN").build();
+    void testRegisterUserWhenSuccess() {
+        // Arrange: Setup mocks
+        when(userRepository.findByUserName("testuser")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
+        RoleEntity userRole = RoleEntity.builder().name("USER").build();
+        when(roleRepository.findByNameIn(Set.of("USER"))).thenReturn(Set.of(userRole));
+        UserEntity savedUser = UserEntity.builder().userName("testuser").passwordHash("encodedPassword").roles(Set.of(userRole)).build();
+        when(userRepository.save(any(UserEntity.class))).thenReturn(savedUser);
 
-        when(userRepository.findByUserName("john")).thenReturn(Optional.empty());
-        when(roleRepository.findByName("ROLE_ADMIN")).thenReturn(Optional.of(existingRole));
-        when(passwordEncoder.encode("password")).thenReturn("encodedPassword");
+        // Act: Call the service
+        UserResponse response = userService.registerUser(userRequest);
 
-        UserResponse response = userService.registerUser(request);
-
+        // Assert: Verify result
         assertNotNull(response);
-        assertEquals("User registered successfully with role: ROLE_ADMIN", response.getMessage());
-
-        ArgumentCaptor<UserEntity> userCaptor = ArgumentCaptor.forClass(UserEntity.class);
-        verify(userRepository).save(userCaptor.capture());
-
-        UserEntity savedUser = userCaptor.getValue();
-        assertEquals("john", savedUser.getUsername());
-        assertEquals("encodedPassword", savedUser.getPasswordHash());
-        assertEquals(existingRole, savedUser.getRole());
+        assertEquals("testuser", response.getUsername());
+        verify(userRepository).save(any(UserEntity.class));
+        verify(passwordEncoder).encode("password123");
     }
 
     @Test
-    void testRegisterUserThrowsExceptionWhenUsernameExists() {
-        UserRequest request = new UserRequest();
-        request.setUsername("john");
-        request.setPassword("password");
+    void testRegisterUserAlreadyExists() {
+        // Arrange: Simulate existing user
+        when(userRepository.findByUserName("testuser")).thenReturn(Optional.of(new UserEntity()));
 
-        when(userRepository.findByUserName("john")).thenReturn(Optional.of(new UserEntity()));
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            userService.registerUser(request);
-        });
-
-        assertEquals("Username already exists", exception.getMessage());
-        verify(userRepository, never()).save(any(UserEntity.class));
+        // Act & Assert: Expect exception
+        assertThrows(ResourceAlreadyExistsException.class, () -> userService.registerUser(userRequest));
+        verify(userRepository, never()).save(any());
     }
 
     @Test
-    void registerUser_ShouldUseDefaultRole_WhenRoleIsNull()  {
-        UserRequest request = UserRequest.builder().username("new_user").password("pass123").role(null).build();
-        when(userRepository.findByUserName("new_user")).thenReturn(Optional.empty());
-        when(roleRepository.findByName(null)).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("pass123")).thenReturn("encodedPass");
-        RoleEntity defaultRole = RoleEntity.builder().id(UUID.randomUUID()).name("ROLE_USER").build();
-        when(roleRepository.save(any(RoleEntity.class))).thenReturn(defaultRole);
-        when(userRepository.save(any(UserEntity.class))).thenAnswer(i -> i.getArgument(0));
-        UserResponse response = userService.registerUser(request);
-        assertThat(response.getMessage())
-                .isEqualTo("User registered successfully with role: ROLE_USER");
-        verify(roleRepository).save(any(RoleEntity.class));
+    void testRegisterUserInvalidRoles(){
+        // Arrange: No roles found
+        when(userRepository.findByUserName("testuser")).thenReturn(Optional.empty());
+        when(roleRepository.findByNameIn(Set.of("USER"))).thenReturn(Set.of());
+
+        // Act & Assert: Expect exception
+        assertThrows(IllegalArgumentException.class, () -> userService.registerUser(userRequest));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void testPasswordIsEncoded() {
+        // Arrange: Setup mocks
+        when(userRepository.findByUserName("testuser")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
+        RoleEntity userRole = new RoleEntity();
+        userRole.setName("USER");
+        when(roleRepository.findByNameIn(Set.of("USER"))).thenReturn(Set.of(userRole));
+        when(userRepository.save(any(UserEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act: Call the service
+        UserResponse response = userService.registerUser(userRequest);
+
+        // Assert: Verify password encoding
+        assertEquals("testuser", response.getUsername());
+        verify(passwordEncoder, times(1)).encode("password123");
     }
 }

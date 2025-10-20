@@ -20,9 +20,9 @@ import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -37,6 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.test.web.servlet.ResultActions;
 
+@ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
 class MemberControllerTest {
@@ -113,7 +114,7 @@ class MemberControllerTest {
     @WithMockUser(roles = {"USER"})
     void getMemberByIdReturns404WhenNotFound() throws Exception {
         when(memberService.getMemberById(any(UUID.class)))
-                .thenThrow(new MemberNotFoundException(HttpStatus.NOT_FOUND,"Member not found"));
+                .thenThrow(new MemberNotFoundException());
         mockMvc.perform(get("/api/v1/members/{id}", memberId))
                 .andExpect(status().isNotFound());
     }
@@ -146,7 +147,7 @@ class MemberControllerTest {
     @Test
     @WithMockUser(roles = {"ADMIN"})
     void updateMemberReturns200ForValidRequest() throws Exception {
-        when(memberService.updateMember(eq(memberId), any(MemberResponse.class))).thenReturn(validResponse);
+        when(memberService.updateMember(eq(memberId), any(MemberRequest.class))).thenReturn(validResponse);
         mockMvc.perform(put("/api/v1/members/{id}", memberId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validResponse)))
@@ -157,8 +158,8 @@ class MemberControllerTest {
     @Test
     @WithMockUser(roles = {"ADMIN"})
     void updateMemberReturns404WhenMemberNotFound() throws Exception {
-        when(memberService.updateMember(any(UUID.class), any(MemberResponse.class)))
-                .thenThrow(new MemberNotFoundException(HttpStatus.NOT_FOUND,"Member not found"));
+        when(memberService.updateMember(any(UUID.class), any(MemberRequest.class)))
+                .thenThrow(new MemberNotFoundException());
         mockMvc.perform(put("/api/v1/members/{id}", memberId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validResponse)))
@@ -178,7 +179,7 @@ class MemberControllerTest {
     @Test
     @WithMockUser(roles = {"ADMIN"})
     void deleteMemberReturns404WhenNotFound() throws Exception {
-        doThrow(new MemberNotFoundException(HttpStatus.NOT_FOUND,"Member not found"))
+        doThrow(new MemberNotFoundException())
                 .when(memberService).deleteMember(memberId);
         mockMvc.perform(delete("/api/v1/members/{id}", memberId))
                 .andExpect(status().isNotFound());

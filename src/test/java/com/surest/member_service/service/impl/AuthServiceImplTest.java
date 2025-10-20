@@ -34,7 +34,7 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void generateToken_ShouldReturnToken_WhenAuthenticationIsSuccessful() throws Exception {
+    void generateTokenShouldReturnTokenWhenAuthenticationIsSuccessful() throws Exception {
         AuthRequest authRequest = AuthRequest.builder().username("john_doe").password("password123").build();
         String mockToken = "mock-jwt-token";
         when(authenticationManager.authenticate(
@@ -49,7 +49,7 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void generateToken_ShouldThrowException_WhenInvalidCredentials() {
+    void generateTokenShouldThrowExceptionWhenInvalidCredentials() {
         AuthRequest authRequest = AuthRequest.builder().username("john_doe").password("wrong_password").build();
         doThrow(new BadCredentialsException("Invalid username or password"))
                 .when(authenticationManager)
@@ -65,7 +65,7 @@ class AuthServiceImplTest {
     }
 
     @Test
-    void generateToken_ShouldThrowException_WhenUnexpectedErrorOccurs() {
+    void generateTokenShouldThrowExceptionWhenUnexpectedErrorOccurs() {
         AuthRequest authRequest = AuthRequest.builder().username("jane_doe").password("password123").build();
         doThrow(new RuntimeException("Authentication system failure"))
                 .when(authenticationManager)

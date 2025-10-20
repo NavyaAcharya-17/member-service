@@ -4,34 +4,39 @@ package com.surest.member_service.service.impl;
 import com.surest.member_service.dto.MemberRequest;
 import com.surest.member_service.dto.MemberResponse;
 import com.surest.member_service.entities.MemberEntity;
-import com.surest.member_service.exception.MemberException;
+import com.surest.member_service.exception.MemberNotFoundException;
+import com.surest.member_service.exception.ResourceAlreadyExistsException;
 import com.surest.member_service.mapper.MemberMapper;
 import com.surest.member_service.repository.MemberRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
+import org.springframework.test.web.servlet.MockMvc;
 
 import java.sql.Timestamp;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class MemberServiceImplTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
     @InjectMocks
     private MemberServiceImpl memberService;
 
@@ -41,129 +46,136 @@ class MemberServiceImplTest {
     @Mock
     private MemberMapper memberMapper;
 
-    private MemberRequest memberRequest;
-    private MemberEntity memberEntity;
-    private MemberResponse memberResponse;
+    private MemberRequest request;
+    private MemberEntity member;
+    private MemberResponse response;
     private UUID memberId;
     Timestamp now;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
         memberId = UUID.randomUUID();
-        memberRequest = MemberRequest.builder()
-                .firstName("John")
-                .lastName("Doe")
-                .email("john.doe@example.com")
-                .dateOfBirth(LocalDate.of(1990, 1, 1))
-                .build();
+        request = new MemberRequest();
+        request.setEmail("test@example.com");
+        request.setFirstName("John");
+        request.setLastName("Doe");
 
-        memberEntity = MemberEntity.builder()
-                .memberId(memberId)
-                .firstName("John")
-                .lastName("Doe")
-                .email("john.doe@example.com")
-                .dateOfBirth(LocalDate.of(1990, 1, 1))
-                .build();
+        member = new MemberEntity();
+        member.setMemberId(memberId);
+        member.setEmail("test@example.com");
+        member.setFirstName("John");
+        member.setLastName("Doe");
 
-        memberResponse = MemberResponse.builder()
-                .memberId(memberId)
-                .firstName("John")
-                .lastName("Doe")
-                .email("john.doe@example.com")
-                .dateOfBirth(LocalDate.of(1990, 1, 1))
-                .build();
+        response = new MemberResponse();
+        response.setMemberId(memberId);
+        response.setEmail("test@example.com");
+        response.setFirstName("John");
+        response.setLastName("Doe");
     }
 
     @Test
-    void testGetMembersShouldReturnPagedResults() {
+    void testGetMembersSuccess() {
+        //Arrange
         Pageable pageable = PageRequest.of(0, 10);
-        Page<MemberEntity> page = new PageImpl<>(List.of(memberEntity));
-        when(memberRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
-        Page<MemberResponse> result = memberService.getMembers(null, null, pageable);
-        assertThat(result).isNotNull();
-        assertThat(result.getContent()).hasSize(1);
-        assertThat(result.getContent().get(0).getFirstName()).isEqualTo("John");
-        assertThat(result.getTotalElements()).isEqualTo(1);
-        assertThat(result.getTotalPages()).isEqualTo(1);
-        verify(memberRepository).findAll(any(Specification.class), eq(pageable));
+        Page<MemberEntity> page = new PageImpl<>(List.of(member));
+        when(memberRepository.findAll(Mockito.any(Specification.class), eq(pageable)))
+                .thenReturn(page);
+        //When
+        Page<MemberResponse> result = memberService.getMembers("John", "Doe", pageable);
+
+        //Then
+        assertEquals(1, result.getTotalElements());
+        assertEquals("John", result.getContent().get(0).getFirstName());
+        verify(memberRepository).findAll(Mockito.any(Specification.class), eq(pageable));
     }
 
     @Test
-    void test_getMemberById_ShouldReturnMember_WhenFound() throws MemberException {
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(memberEntity));
-        when(memberMapper.toResponse(memberEntity)).thenReturn(memberResponse);
+    void testGetMemberByIdSuccess() throws MemberNotFoundException {
+        // Arrange
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(memberMapper.toResponse(member)).thenReturn(response);
+
+        //When
         MemberResponse result = memberService.getMemberById(memberId);
+
+        //Then
         assertNotNull(result);
         assertEquals(memberId, result.getMemberId());
     }
 
     @Test
-    void test_getMemberById_ShouldThrowException_WhenNotFound() {
+    void testGetMemberByIdNotFound() {
+        //Arrange
         when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
-        MemberException exception = assertThrows(MemberException.class,
-                () -> memberService.getMemberById(memberId));
-        assertEquals(HttpStatus.NOT_FOUND, exception.getHttpStatus());
+
+        //Expect exception
+        assertThrows(MemberNotFoundException.class, () -> memberService.getMemberById(memberId));
+        verify(memberRepository, times(1)).findById(memberId);
     }
 
     @Test
-    void test_createMember_ShouldCreateAndReturnMember() throws MemberException {
-        when(memberRepository.findByEmail(memberRequest.getEmail())).thenReturn(Optional.empty());
-        when(memberMapper.toEntity(memberRequest)).thenReturn(memberEntity);
-        when(memberRepository.save(memberEntity)).thenReturn(memberEntity);
-        when(memberMapper.toResponse(memberEntity)).thenReturn(memberResponse);
+    void testCreateMemberSuccess() throws MemberNotFoundException {
+        //Arrange
+        when(memberRepository.findByEmail(request.getEmail())).thenReturn(Optional.empty());
+        when(memberMapper.toEntity(request)).thenReturn(member);
+        when(memberRepository.save(member)).thenReturn(member);
+        when(memberMapper.toResponse(member)).thenReturn(response);
 
-        MemberResponse result = memberService.createMember(memberRequest);
+        //When
+        MemberResponse result = memberService.createMember(request);
 
+        //Then
         assertNotNull(result);
         assertEquals(memberId, result.getMemberId());
     }
 
     @Test
-    void test_createMember_ShouldThrowException_WhenEmailExists() {
-        when(memberRepository.findByEmail(memberRequest.getEmail())).thenReturn(Optional.of(memberEntity));
+    void testCreateMemberAlreadyExists() {
+        //Arrange
+        when(memberRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(member));
 
-        MemberException exception = assertThrows(MemberException.class,
-                () -> memberService.createMember(memberRequest));
-
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exception.getHttpStatus());
+        //Expect exception
+        assertThrows(ResourceAlreadyExistsException.class, () -> memberService.createMember(request));
+        verify(memberRepository, never()).save(any());
     }
 
     @Test
-    void test_updateMember_ShouldUpdateAndReturnMember() throws MemberException {
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(memberEntity));
-        doNothing().when(memberMapper).updateEntityFromResponse(memberResponse, memberEntity);
-        when(memberRepository.save(memberEntity)).thenReturn(memberEntity);
-        when(memberMapper.toResponse(memberEntity)).thenReturn(memberResponse);
+    void testUpdateMemberSuccess() throws MemberNotFoundException {
+        //Arrange
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        doNothing().when(memberMapper).updateEntity(member,request);
+        when(memberRepository.save(member)).thenReturn(member);
+        when(memberMapper.toResponse(member)).thenReturn(response);
 
-        MemberResponse result = memberService.updateMember(memberId, memberResponse);
+        //When
+        MemberResponse result = memberService.updateMember(memberId, request);
 
+        //Then
         assertNotNull(result);
         assertEquals(memberId, result.getMemberId());
     }
 
     @Test
-    void test_updateMember_ShouldThrowException_WhenMemberNotFound() {
+    void updateMemberShouldThrowExceptionWhenMemberNotFound() {
         when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
-        MemberException exception = assertThrows(MemberException.class,
-                () -> memberService.updateMember(memberId, memberResponse));
 
-        assertEquals(HttpStatus.NOT_FOUND, exception.getHttpStatus());
+        assertThrows(MemberNotFoundException.class, () -> memberService.updateMember(memberId, request));
+        verify(memberRepository, never()).save(any());
     }
 
     @Test
-    void test_deleteMember_ShouldDelete_WhenMemberExists()  {
-        when(memberRepository.existsById(memberId)).thenReturn(true);
-        doNothing().when(memberRepository).deleteById(memberId);
+    void testDeleteMemberSuccess()  {
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        memberService.deleteMember(memberId);
 
-        assertDoesNotThrow(() -> memberService.deleteMember(memberId));
+        verify(memberRepository).delete(member);
     }
 
     @Test
-    void test_deleteMember_ShouldThrowException_WhenMemberNotFound() {
-        when(memberRepository.existsById(memberId)).thenReturn(false);
-        MemberException exception = assertThrows(MemberException.class,
-                () -> memberService.deleteMember(memberId));
-        assertEquals(HttpStatus.NOT_FOUND, exception.getHttpStatus());
+    void testDeleteMemberShouldThrowExceptionWhenMemberNotFound() {
+        when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
+
+        assertThrows(MemberNotFoundException.class, () -> memberService.deleteMember(memberId));
+        verify(memberRepository, never()).delete(any(MemberEntity.class));
     }
 }

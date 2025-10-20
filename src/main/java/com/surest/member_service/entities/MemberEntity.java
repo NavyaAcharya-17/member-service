@@ -18,11 +18,11 @@ import java.util.UUID;
 @Data
 @Builder
 @Entity
-@Table(name = "member", schema = "member_mgmt")
+@Table(name = "member")
 public class MemberEntity {
     @Id
     @GeneratedValue
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "id")
     private UUID memberId;
 
     @Column(name = "first_name", nullable = false, length = 100)

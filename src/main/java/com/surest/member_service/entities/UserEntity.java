@@ -10,14 +10,15 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
 @Builder
 @Entity
-@Table(name = "users", schema = "member_mgmt")
-public class UserEntity implements UserDetails {
+@Table(name = "users")
+public class UserEntity implements UserDetails{
     @Id
     @GeneratedValue
     @Column(name = "id", updatable = false, nullable = false)
@@ -44,7 +45,7 @@ public class UserEntity implements UserDetails {
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return roles.stream()
                 .map(role -> new SimpleGrantedAuthority(role.getName()))
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -55,26 +56,6 @@ public class UserEntity implements UserDetails {
     @Override
     public String getUsername() {
         return userName;
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
     }
 }
 

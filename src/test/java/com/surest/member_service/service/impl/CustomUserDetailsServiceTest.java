@@ -28,7 +28,7 @@ class CustomUserDetailsServiceTest {
     }
 
     @Test
-    void loadUserByUsername_ShouldReturnUserDetails_WhenUserExists() {
+    void loadUserByUsernameShouldReturnUserDetailsWhenUserExists() {
         String username = "john_doe";
         UserEntity userEntity = new UserEntity();
         userEntity.setUserName(username);
@@ -42,7 +42,7 @@ class CustomUserDetailsServiceTest {
     }
 
     @Test
-    void loadUserByUsername_ShouldThrowException_WhenUserDoesNotExist() {
+    void loadUserByUsernameShouldThrowExceptionWhenUserDoesNotExist() {
         String username = "non_existing_user";
         when(userRepository.findByUserName(username)).thenReturn(Optional.empty());
         UsernameNotFoundException exception = assertThrows(UsernameNotFoundException.class, () ->

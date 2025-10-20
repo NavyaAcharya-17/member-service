@@ -1,9 +1,9 @@
-package com.surest.member_service.util;
+package com.surest.member_service.service.impl;
 
+import com.surest.member_service.util.JWTUtil;
 import io.jsonwebtoken.ExpiredJwtException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -40,7 +40,7 @@ class JWTUtilTest {
     }
 
     @Test
-    void testValidateToken_Success() {
+    void testValidateTokenSuccess() {
         String username = "testUser";
         UserDetails userDetails = mock(UserDetails.class);
         when(userDetails.getUsername()).thenReturn(username);
@@ -49,7 +49,7 @@ class JWTUtilTest {
     }
 
     @Test
-    void testValidateToken_Failure_WrongUsername() {
+    void testValidateTokenFailureForWrongUsername() {
         UserDetails userDetails = mock(UserDetails.class);
         when(userDetails.getUsername()).thenReturn("otherUser");
         String token = jwtUtil.generateToken("testUser");
@@ -57,7 +57,7 @@ class JWTUtilTest {
     }
 
     @Test
-    void testValidateToken_Failure_ExpiredToken() throws InterruptedException {
+    void testValidateTokenFailureForExpiredToken() throws InterruptedException {
         ReflectionTestUtils.setField(jwtUtil, "EXPIRATION_TIME", 1000L); // 1 second
         jwtUtil.init();
         String username = "testUser";
@@ -69,7 +69,7 @@ class JWTUtilTest {
     }
 
     @Test
-    void testTokenExpirationCheck_ExpiredJwtException() throws InterruptedException {
+    void tokenExpirationThrowsExpiredJwtException() throws InterruptedException {
         ReflectionTestUtils.setField(jwtUtil, "EXPIRATION_TIME", 100L);
         jwtUtil.init();
         String token = jwtUtil.generateToken("testUser");
@@ -80,7 +80,7 @@ class JWTUtilTest {
     }
 
     @Test
-    void testGenerateToken_ContainsUsername() {
+    void generateTokenContainsUsername() {
         String username = "testUser";
         String token = jwtUtil.generateToken(username);
         assertTrue(token.contains("."), "JWT token should contain dots separating header, payload, signature");

@@ -12,16 +12,13 @@ import java.util.UUID;
 @Data
 @Builder
 @Entity
-@Table(name = "role", schema = "member_mgmt", uniqueConstraints = {
-        @UniqueConstraint(columnNames = "name")
-})
+@Table(name = "role")
 public class RoleEntity {
     @Id
     @GeneratedValue
-    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "name", nullable = false, length = 50, unique = true)
+    @Column(nullable = false, length = 50, unique = true)
     private String name;
 
     @Builder.Default

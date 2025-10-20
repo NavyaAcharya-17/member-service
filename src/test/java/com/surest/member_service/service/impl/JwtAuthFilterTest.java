@@ -1,6 +1,7 @@
-package com.surest.member_service.util;
+package com.surest.member_service.service.impl;
 
-import com.surest.member_service.service.impl.CustomUserDetailsService;
+import com.surest.member_service.util.JWTUtil;
+import com.surest.member_service.util.JwtAuthFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class JwtAuthFilterTest {
+class JwtAuthFilterTest {
 
     @InjectMocks
     private JwtAuthFilter jwtAuthFilter;
@@ -50,7 +51,7 @@ public class JwtAuthFilterTest {
     }
 
     @Test
-    void testDoFilterInternal_WithValidToken_SetsAuthentication() throws ServletException, IOException, ServletException, IOException {
+    void testDoFilterInternalWithValidTokenSetsAuthentication() throws ServletException, IOException {
         String token = "valid-token";
         String username = "testUser";
         String authHeader = "Bearer " + token;
@@ -61,16 +62,14 @@ public class JwtAuthFilterTest {
         when(jwtUtil.validateToken(username, userDetails, token)).thenReturn(true);
         jwtAuthFilter.doFilterInternal(request, response, filterChain);
 
-        // Verify authentication is set in SecurityContext
         assertNotNull(SecurityContextHolder.getContext().getAuthentication());
         assertEquals(userDetails, SecurityContextHolder.getContext().getAuthentication().getPrincipal());
 
-        // Verify the filterChain was called
         verify(filterChain).doFilter(request, response);
     }
 
     @Test
-    void testDoFilterInternal_WithInvalidToken_DoesNotSetAuthentication() throws ServletException, IOException {
+    void testDoFilterInternalWithInvalidTokenDoesNotSetAuthentication() throws ServletException, IOException {
         String token = "invalid-token";
         String username = "testUser";
         String authHeader = "Bearer " + token;
@@ -87,7 +86,7 @@ public class JwtAuthFilterTest {
     }
 
     @Test
-    void testDoFilterInternal_WithNoAuthorizationHeader_DoesNothing() throws ServletException, IOException {
+    void testDoFilterInternalWithNoAuthorizationHeaderDoesNothing() throws ServletException, IOException {
         when(request.getHeader("Authorization")).thenReturn(null);
 
         jwtAuthFilter.doFilterInternal(request, response, filterChain);
@@ -97,7 +96,7 @@ public class JwtAuthFilterTest {
     }
 
     @Test
-    void testDoFilterInternal_WithAlreadyAuthenticatedUser_DoesNotOverrideAuthentication() throws ServletException, IOException {
+    void testDoFilterInternalWithAlreadyAuthenticatedUserDoesNotOverrideAuthentication() throws ServletException, IOException {
         // Set existing authentication
         UsernamePasswordAuthenticationToken existingAuth =
                 new UsernamePasswordAuthenticationToken("existingUser", null, null);
@@ -118,7 +117,7 @@ public class JwtAuthFilterTest {
     }
 
     @Test
-    void testDoFilterInternal_WithNonBearerHeader_DoesNothing() throws ServletException, IOException {
+    void testDoFilterInternalWithNonBearerHeaderDoesNothing() throws ServletException, IOException {
         when(request.getHeader("Authorization")).thenReturn("Basic somecredentials");
 
         jwtAuthFilter.doFilterInternal(request, response, filterChain);
